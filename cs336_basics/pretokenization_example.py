@@ -1,18 +1,22 @@
+import multiprocessing
 import os
+from collections import Counter
 from typing import BinaryIO
 
+import regex as re
+from tqdm import tqdm
+
+
 def find_chunk_boundaries(
-    file: BinaryIO, 
-    desired_num_chunks: int, 
-    split_special_token: bytes
+    file: BinaryIO, desired_num_chunks: int, split_special_token: bytes
 ) -> list[int]:
     """
     Chunk the file into parts that can be counted independently.
     May return fewer chunks if the boundaries end up overlapping.
     """
-    assert isinstance(split_special_token, bytes), (
-        "Must represent special token as a bytestring"
-    )
+    assert isinstance(
+        split_special_token, bytes
+    ), "Must represent special token as a bytestring"
 
     # Get total file size in bytes
     file.seek(0, os.SEEK_END)
@@ -49,14 +53,31 @@ def find_chunk_boundaries(
     # Make sure all boundaries are unique, but might be fewer than desired_num_chunks
     return sorted(set(chunk_boundaries))
 
+
 ## Usage
-with open(..., "rb") as f:
+with open("data/TinyStoriesV2-GPT4-valid.txt", "rb") as f:
+    num_processes = 11
     boundaries = find_chunk_boundaries(
-        f, num_processes, "<|endoftext|>".encode("utf-8"))
-        
-    # The following is a serial implementation, but you can parallelize this 
+        f, num_processes, "<|endoftext|>".encode("utf-8")
+    )
+    print(boundaries)
+
+    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+    counts = Counter()
+
+    # The following is a serial implementation, but you can parallelize this
     # by sending each start/end pair to a set of processes.
-    for start, end in zip(boundaries[:-1], boundaries[1:]):
+    for start, end in tqdm(zip(boundaries[:-1], boundaries[1:])):
         f.seek(start)
         chunk = f.read(end - start).decode("utf-8", errors="ignore")
-        # Run pre-tokenization on your chunk and store the counts for each pre-token
+
+        for doc in re.split("<|endoftext|>", chunk):
+            print(doc[:10])
+            break
+            # Run pre-tokenization on your chunk and store the counts for each pre-token
+            for pre_token in re.finditer(PAT, doc):
+                print(pre_token.groups())
+                break
+                counts.update([pre_token])
+        # counts.update(re.findall(PAT, chunk))
+    print(counts)
