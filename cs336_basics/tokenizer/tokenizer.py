@@ -2,7 +2,9 @@ import base64
 import json
 from collections.abc import Iterable, Iterator
 
+import numpy as np
 import regex as re
+from tqdm import tqdm
 
 PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
 
@@ -72,12 +74,12 @@ class Tokenizer:
     def encode(self, text: str) -> list[int]:
         ids = []
         if not self.special_tokens:
-            for pretoken in re.finditer(PAT, text):
+            for pretoken in tqdm(re.finditer(PAT, text)):
                 ids.extend(self.encode_pretoken(pretoken.group()))
             return ids
 
         delimiters = "|".join(re.escape(token) for token in self.special_tokens)
-        for chunk in re.split(f"({delimiters})", text):
+        for chunk in tqdm(re.split(f"({delimiters})", text)):
             if not chunk:
                 continue
 
@@ -97,11 +99,6 @@ class Tokenizer:
         text = byte_sequence.decode("utf-8", errors="replace")
         return text
 
-
-if __name__ == "__main__":
-    tokenizer = Tokenizer.from_files(
-        "outputs/tokenizers/new_vocab.json", "outputs/tokenizers/new_merges.txt", ["<|endoftext|>"]
-    )
-
-    text = "This logic correctly operates on byte sequences. The fact that vocab[id_less_than_256] might be a single byte like b'\xe3' (which decodes to � on its own) doesn't prevent it from being concatenated with b'\x81' to form b'\xe3\x81', which is a perfectly valid sequence of two bytes. This new two-byte sequence is then associated with a new token ID."
-    assert tokenizer.decode(tokenizer.encode(text)) == text
+    def serialize(self, path: str, ids: list[int]):
+        ids_np = np.array(ids, dtype=np.uint16)
+        np.savez_compressed(path, ids_np)

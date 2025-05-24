@@ -168,3 +168,5 @@ data/
 
 profile.html
 profile.json
+
+.DS_Store

@@ -39,7 +39,7 @@ def decode_utf8_bytes_to_str_wrong(bytestring: bytes):
 
 ## Problem (train_bpe): BPE Tokenizer Training (15 points)
 
-**Deliverable**: Write a function that, given a path to an input text file, trains a (byte-level) BPE tokenizer. Your BPE training function should handle (at least) the following input parameters:
+- Deliverable: Write a function that, given a path to an input text file, trains a (byte-level) BPE tokenizer. Your BPE training function should handle (at least) the following input parameters:
 
 `input_path: str` Path to a text file with BPE tokenizer training data.
 
@@ -67,9 +67,29 @@ Resource requirements: ≤ 30 minutes (no GPUs), ≤ 30GB RAM Hint You should be
 
 (b) The <|endoftext|> token is handled as a special case before the BPE merges are applied.
 
-* Deliverable: It took 1 minute 10 seconds to train, about 1GB of RAM. The longest token is `b' accomplishment'`.
+- Deliverable: It took 1 minute 10 seconds to train, about 1GB of RAM. The longest token is `b' accomplishment'`.
 
 (b) Profile your code. What part of the tokenizer training process takes the most time?
 
-Deliverable: Loading and counting pretokens takes the most time.
+- Deliverable: Loading and counting pretokens takes the most time.
 
+## Problem (tokenizer_experiments): Experiments with tokenizers (4 points)
+
+(a) Sample 10 documents from TinyStories and OpenWebText. Using your previously-trained TinyStories and OpenWebText tokenizers (10K and 32K vocabulary size, respectively), encode these sampled documents into integer IDs. What is each tokenizer’s compression ratio (bytes/token)?
+
+- Deliverable: 
+    - TinyStories: 4.15 bytes/token
+    - OpenWebText: 4.51 bytes/token
+
+
+(b) What happens if you tokenize your OpenWebText sample with the TinyStories tokenizer? Compare the compression ratio and/or qualitatively describe what happens.
+
+- Deliverable: 3.41, it drops significantly.
+
+(c) Estimate the throughput of your tokenizer (e.g., in bytes/second). How long would it take to tokenize the Pile dataset (825GB of text)?
+
+- Deliverable: Around 1 million bytes/second, it would take 572 days to tokenize Pile dataset.
+
+(d) Using your TinyStories and OpenWebText tokenizers, encode the respective training and development datasets into a sequence of integer token IDs. We’ll use this later to train our language model. We recommend serializing the token IDs as a NumPy array of datatype uint16. Why is uint16 an appropriate choice?
+
+- Deliverable: because `uint16` has supports values from 0 to 65535, which is just enough for all our ids.

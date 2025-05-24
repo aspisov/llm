@@ -2,11 +2,11 @@ import base64
 import json
 import multiprocessing
 import os
-import time
 from collections import Counter, defaultdict
 from typing import BinaryIO
 
 import regex as re
+from tqdm import tqdm
 
 PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
 
@@ -178,7 +178,7 @@ def train_bpe(
 
     # ----------------------------- MERGES -------------------------------------
     next_token = 256
-    for _ in range(vocab_size - next_token - len(special_tokens)):
+    for _ in tqdm(range(vocab_size - next_token - len(special_tokens))):
         if not pair_counts:
             break
 
@@ -217,12 +217,3 @@ def train_and_save_bpe(
     with open(merges_save_path, "w", encoding="utf-8") as f:
         for pair in merges:
             f.write(f"{base64.b64encode(pair[0]).decode('utf-8')}\t{base64.b64encode(pair[1]).decode('utf-8')}\n")
-
-
-if __name__ == "__main__":
-    prefix = "tiny_stories"
-
-    vocab, merges = train_bpe("data/TinyStoriesV2-GPT4-valid.txt", 32000, ["<|endoftext|>"])
-
-    vocab_path = "outputs/tokenizers/new_vocab.json"
-    merges_path = "outputs/tokenizers/new_merges.txt"
