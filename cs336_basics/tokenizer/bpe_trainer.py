@@ -1,8 +1,9 @@
+import base64
 import json
 import multiprocessing
 import os
+import time
 from collections import Counter, defaultdict
-from pathlib import Path
 from typing import BinaryIO
 
 import regex as re
@@ -22,24 +23,17 @@ def count_pretokens_in_chunk(args) -> dict[str, int]:
     delimeters = "|".join(re.escape(token) for token in special_tokens)
     pretoken_counts = Counter()
     for doc in re.split(delimeters, chunk):
-        pre_tokens = [
-            tuple(list(pre_token.encode("utf-8")))
-            for pre_token in re.findall(PAT, doc)
-        ]
+        pre_tokens = [tuple(list(pre_token.encode("utf-8"))) for pre_token in re.findall(PAT, doc)]
         pretoken_counts.update(pre_tokens)
     return pretoken_counts
 
 
-def find_chunk_boundaries(
-    file: BinaryIO, desired_num_chunks: int, split_special_token: bytes
-) -> list[int]:
+def find_chunk_boundaries(file: BinaryIO, desired_num_chunks: int, split_special_token: bytes) -> list[int]:
     """
     Chunk the file into parts that can be counted independently.
     May return fewer chunks if the boundaries end up overlapping.
     """
-    assert isinstance(
-        split_special_token, bytes
-    ), "Must represent special token as a bytestring"
+    assert isinstance(split_special_token, bytes), "Must represent special token as a bytestring"
 
     # Get total file size in bytes
     file.seek(0, os.SEEK_END)
@@ -77,17 +71,14 @@ def find_chunk_boundaries(
     return sorted(set(chunk_boundaries))
 
 
-def find_most_common_pair(
-    pair_counts: dict[tuple[int, int], int], vocab: dict[int, bytes]
-) -> tuple[int, int]:
+def find_most_common_pair(pair_counts: dict[tuple[int, int], int], vocab: dict[int, bytes]) -> tuple[int, int]:
     """Most common pair search"""
-    max_freq = max(pair_counts.values())
+    max_cnt = max(pair_counts.values())
 
-    max_freq_pairs = [
-        pair for pair, freq in pair_counts.items() if freq == max_freq
-    ]
-
-    return max(max_freq_pairs, key=lambda x: (vocab[x[0]], vocab[x[1]]))
+    return max(
+        (pair for pair, cnt in pair_counts.items() if cnt == max_cnt),
+        key=lambda x: (vocab[x[0]], vocab[x[1]]),
+    )
 
 
 def update_pairs(
@@ -137,7 +128,9 @@ def update_pairs(
     return pretokens, pair_counts, pair_ids
 
 
-def create_pairs(pretokens: list[tuple[tuple[int, ...], int]]) -> tuple[
+def create_pairs(
+    pretokens: list[tuple[tuple[int, ...], int]],
+) -> tuple[
     dict[tuple[int, int], int],
     dict[tuple[int, int], set[int]],
 ]:
@@ -151,18 +144,11 @@ def create_pairs(pretokens: list[tuple[tuple[int, ...], int]]) -> tuple[
     return pair_counts, pair_ids
 
 
-def pretokenize(
-    input_path: str | os.PathLike, special_tokens: list[str]
-) -> list[tuple[tuple[int, ...], int]]:
+def pretokenize(input_path: str | os.PathLike, special_tokens: list[str]) -> list[tuple[tuple[int, ...], int]]:
     with open(input_path, "rb") as f:
-        boundaries = find_chunk_boundaries(
-            f, NUM_PROCESSES, special_tokens[0].encode("utf-8")
-        )
+        boundaries = find_chunk_boundaries(f, NUM_PROCESSES, special_tokens[0].encode("utf-8"))
 
-    jobs = [
-        (input_path, start, end, special_tokens)
-        for start, end in zip(boundaries[:-1], boundaries[1:])
-    ]
+    jobs = [(input_path, start, end, special_tokens) for start, end in zip(boundaries[:-1], boundaries[1:])]
 
     with multiprocessing.Pool(NUM_PROCESSES) as pool:
         results = pool.map(count_pretokens_in_chunk, jobs)
@@ -185,9 +171,7 @@ def train_bpe(
     merges: list[tuple[bytes, bytes]] = []
 
     # --------------------------- PRETOKENS ------------------------------------
-    pretokens = pretokenize(
-        input_path=input_path, special_tokens=special_tokens
-    )
+    pretokens = pretokenize(input_path=input_path, special_tokens=special_tokens)
 
     # ----------------------------- PAIRS --------------------------------------
     pair_counts, pair_ids = create_pairs(pretokens=pretokens)
@@ -220,20 +204,25 @@ def train_bpe(
     return vocab, merges
 
 
-if __name__ == "__main__":
-    vocab, merges = train_bpe(
-        "data/TinyStoriesV2-GPT4-valid.txt", 10000, ["<|endoftext|>"]
-    )
-    print(vocab, merges, sep="\n-----------------------------------------\n")
+def train_and_save_bpe(
+    input_path: str, vocab_size: int, special_tokens: list[str], vocab_save_path: str, merges_save_path: str
+):
+    vocab, merges = train_bpe(input_path, vocab_size, special_tokens)
 
-    vocab_path = Path(__file__).parent / "vocab.json"
-    merges_path = Path(__file__).parent / "merges.txt"
+    vocab_json = {k: base64.b64encode(v).decode("utf-8") for k, v in vocab.items()}
 
-    vocab_json = {k: v.hex() for k, v in vocab.items()}
-
-    with open(vocab_path, "w", encoding="utf-8") as f:
+    with open(vocab_save_path, "w", encoding="utf-8") as f:
         json.dump(vocab_json, f, ensure_ascii=False, indent=2)
 
-    with open(merges_path, "w", encoding="utf-8") as f:
+    with open(merges_save_path, "w", encoding="utf-8") as f:
         for pair in merges:
-            f.write(f"{pair[0].hex()} {pair[1].hex()}\n")
+            f.write(f"{base64.b64encode(pair[0]).decode('utf-8')}\t{base64.b64encode(pair[1]).decode('utf-8')}\n")
+
+
+if __name__ == "__main__":
+    prefix = "tiny_stories"
+
+    vocab, merges = train_bpe("data/TinyStoriesV2-GPT4-valid.txt", 32000, ["<|endoftext|>"])
+
+    vocab_path = "outputs/tokenizers/new_vocab.json"
+    merges_path = "outputs/tokenizers/new_merges.txt"

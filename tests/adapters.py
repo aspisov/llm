@@ -9,7 +9,8 @@ import torch
 from jaxtyping import Float, Int
 from torch import Tensor
 
-from cs336_basics.tokenizer.bpe import train_bpe
+from cs336_basics.tokenizer.bpe_trainer import train_bpe
+from cs336_basics.tokenizer.tokenizer import Tokenizer
 
 
 def run_linear(
@@ -420,9 +421,7 @@ def run_get_batch(
     raise NotImplementedError
 
 
-def run_softmax(
-    in_features: Float[Tensor, " ..."], dim: int
-) -> Float[Tensor, " ..."]:
+def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
     """
     Given a tensor of inputs, return the output of softmaxing the given `dim`
     of the input.
@@ -457,9 +456,7 @@ def run_cross_entropy(
     raise NotImplementedError
 
 
-def run_gradient_clipping(
-    parameters: Iterable[torch.nn.Parameter], max_l2_norm: float
-) -> None:
+def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
     """Given a set of parameters, clip their combined gradients to have l2 norm at most max_l2_norm.
 
     Args:
@@ -566,7 +563,7 @@ def get_tokenizer(
     Returns:
         A BPE tokenizer that uses the provided vocab, merges, and special tokens.
     """
-    raise NotImplementedError
+    return Tokenizer(vocab=vocab, merges=merges, special_tokens=special_tokens)
 
 
 def run_train_bpe(
