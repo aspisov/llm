@@ -2,7 +2,7 @@ import math
 
 import torch
 import torch.nn as nn
-from einops import einsum
+from einops import einsum, rearrange, repeat
 
 
 class Linear(nn.Module):
@@ -128,7 +128,8 @@ class RMSNorm(nn.Module):
         in_dtype = x.dtype
         x = x.to(torch.float32)
 
-        rms = torch.sqrt(einsum(x.pow(2), "... d_model -> ...") / self.d_model + self.eps).unsqueeze(-1)
+        rms = torch.sqrt(einsum(x.pow(2), "... d_model -> ...") / self.d_model + self.eps)
+        rms = repeat(rms, "... -> ... 1")
 
         result = x / rms * self.gain
 
@@ -196,3 +197,31 @@ class SwiGLU(nn.Module):
         h1 = einsum(self.w1, x, "... d_ff d_model, ... d_model -> ... d_ff")
         h2 = einsum(self.w3, x, "... d_ff d_model, ... d_model -> ... d_ff")
         return einsum(self.w2, silu(h1) * h2, "... d_model d_ff, ... d_ff -> ... d_model")
+
+
+class RotaryPositionalEmbedding(nn.Module):
+    def __init__(self, theta: float, d_k: int, max_seq_len: int, device: torch.device | None = None):
+        super().__init__()
+
+        assert d_k % 2 == 0, "d_k must be even for RoPE"
+
+        freqs = 1.0 / (theta ** (torch.arange(0, d_k, 2, device=device) / d_k))
+
+        positions = torch.arange(max_seq_len, device=device)
+        angles = torch.outer(positions, freqs)
+
+        self.register_buffer("cos_cache", torch.cos(angles), persistent=False)
+        self.register_buffer("sin_cache", torch.sin(angles), persistent=False)
+
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
+        cos_vals = self.cos_cache[token_positions]  # type:ignore
+        sin_vals = self.sin_cache[token_positions]  # type:ignore
+
+        x_pairs = rearrange(x, "... (pairs two) -> ... pairs two", two=2)
+
+        rotated_pairs = torch.zeros_like(x_pairs)
+        rotated_pairs[..., 0] = x_pairs[..., 0] * cos_vals - x_pairs[..., 1] * sin_vals
+        rotated_pairs[..., 1] = x_pairs[..., 0] * sin_vals + x_pairs[..., 1] * cos_vals
+
+        rotated = rearrange(rotated_pairs, " ... pairs two -> ... (pairs two)")
+        return rotated
