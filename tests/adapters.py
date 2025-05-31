@@ -9,7 +9,7 @@ import torch
 from jaxtyping import Float, Int
 from torch import Tensor
 
-from cs336_basics.model.layers import Embedding, Linear, RMSNorm, RotaryPositionalEmbedding, SwiGLU, silu
+from cs336_basics.model.layers import Embedding, Linear, RMSNorm, RotaryPositionalEmbedding, SwiGLU, silu, softmax
 from cs336_basics.tokenizer.bpe_trainer import train_bpe
 from cs336_basics.tokenizer.tokenizer import Tokenizer
 
@@ -206,6 +206,7 @@ def run_rope(
     """
     rope = RotaryPositionalEmbedding(theta, d_k, max_seq_len)
     return rope(in_query_or_key, token_positions)
+
 
 def run_transformer_block(
     d_model: int,
@@ -439,7 +440,7 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         Float[Tensor, "..."]: Tensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
-    raise NotImplementedError
+    return softmax(in_features, dim)
 
 
 def run_cross_entropy(
