@@ -231,4 +231,34 @@ def softmax(x: torch.Tensor, dim: int = -1) -> torch.Tensor:
     x_shifted = x - torch.max(x, dim=dim, keepdim=True).values
     exp_x = torch.exp(x_shifted)
     sum_exp = torch.sum(exp_x, dim=dim, keepdim=True)
-    return torch.exp(x_shifted) / sum_exp
+    return exp_x / sum_exp
+
+
+def scaled_dot_product_attention(
+    Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor, mask: torch.Tensor | None = None
+) -> torch.Tensor:
+    """
+    Scaled dot-product attention mechanism.
+
+    Args:
+        Q: Query tensor of shape (..., seq_len, d_k)
+        K: Key tensor of shape (..., seq_len, d_k)
+        V: Value tensor of shape (..., seq_len, d_v)
+        mask: Optional boolean mask of shape (seq_len, seq_len).
+              True positions have attention weights that sum to 1,
+              False positions have attention weights of 0.
+
+    Returns:
+        Output tensor of shape (..., seq_len, d_v)
+    """
+    d_k = Q.shape[-1]
+    scores = einsum(Q, K, "... queries d_k, ... keys d_k -> ... queries keys") / math.sqrt(d_k)
+
+    if mask is not None:
+        masked_scores = torch.where(mask, scores, float("-inf"))
+    else:
+        masked_scores = scores
+
+    attn_weights = softmax(masked_scores, dim=-1)
+
+    return einsum(attn_weights, V, "... queries keys, ... keys d_v -> ... queries d_v")
