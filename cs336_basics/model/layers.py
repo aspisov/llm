@@ -26,16 +26,14 @@ class Linear(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
 
-        self.weight = nn.Parameter(
-            torch.empty(out_features, in_features, device=device, dtype=dtype), requires_grad=True
-        )
+        self.w = nn.Parameter(torch.empty(out_features, in_features, device=device, dtype=dtype), requires_grad=True)
 
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
         """Initialize the weight matrix using truncated normal distribution."""
         std = math.sqrt(2 / (self.in_features + self.out_features))
-        nn.init.trunc_normal_(self.weight, mean=0, std=std, a=-3 * std, b=3 * std)
+        nn.init.trunc_normal_(self.w, mean=0, std=std, a=-3 * std, b=3 * std)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -47,7 +45,7 @@ class Linear(nn.Module):
         Returns:
             torch.Tensor: Output tensor of shape (..., out_features).
         """
-        return einsum(self.weight, x, "... out_features in_features, ... in_features -> ... out_features")
+        return einsum(self.w, x, "... out_features in_features, ... in_features -> ... out_features")
 
 
 class Embedding(nn.Module):
@@ -125,12 +123,76 @@ class RMSNorm(nn.Module):
         Returns:
             torch.Tensor: RMS normalized tensor of the same shape as input.
         """
+
+        # Convert to float32 for numerical stability during normalization
         in_dtype = x.dtype
         x = x.to(torch.float32)
 
-        # Reason: Convert to float32 for numerical stability during normalization
         rms = torch.sqrt(einsum(x.pow(2), "... d_model -> ...") / self.d_model + self.eps).unsqueeze(-1)
 
         result = x / rms * self.gain
 
         return result.to(in_dtype)
+
+
+def silu(x: torch.Tensor) -> torch.Tensor:
+    return x * torch.sigmoid(x)
+
+
+class SwiGLU(nn.Module):
+    """
+    SwiGLU (Swish-Gated Linear Unit) feedforward network.
+
+    Implements the gated feedforward network from "GLU Variants Improve Transformer":
+    SwiGLU(x) = (SiLU(W1 * x) ⊙ W3 * x) * W2
+
+    This is commonly used in modern transformer architectures like LLaMA.
+
+    Args:
+        d_model (int): Input/output dimension.
+        d_ff (int | None): Hidden dimension. If None, defaults to 8/3 * d_model rounded to nearest 64.
+        device (torch.device | None): Device to place the layer on.
+        dtype (torch.dtype | None): Data type for the layer parameters.
+    """
+
+    def __init__(
+        self,
+        d_model: int,
+        d_ff: int | None = None,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__()
+
+        if d_ff is None:
+            d_ff = math.ceil(d_model * 8 / 3 / 64) * 64
+
+        self.d_model = d_model
+        self.d_ff = d_ff
+
+        self.w1 = nn.Parameter(torch.empty(d_ff, d_model, device=device, dtype=dtype))
+        self.w2 = nn.Parameter(torch.empty(d_model, d_ff, device=device, dtype=dtype))
+        self.w3 = nn.Parameter(torch.empty(d_ff, d_model, device=device, dtype=dtype))
+
+        self.reset_parameters()
+
+    def reset_parameters(self) -> None:
+        """Initialize the weight matrices using truncated normal distribution."""
+        std = math.sqrt(2 / (self.d_model + self.d_ff))
+        nn.init.trunc_normal_(self.w1, mean=0, std=std, a=-3 * std, b=3 * std)
+        nn.init.trunc_normal_(self.w2, mean=0, std=std, a=-3 * std, b=3 * std)
+        nn.init.trunc_normal_(self.w3, mean=0, std=std, a=-3 * std, b=3 * std)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Apply SwiGLU transformation.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (..., d_model).
+
+        Returns:
+            torch.Tensor: Output tensor of shape (..., d_model).
+        """
+        h1 = einsum(self.w1, x, "... d_ff d_model, ... d_model -> ... d_ff")
+        h2 = einsum(self.w3, x, "... d_ff d_model, ... d_model -> ... d_ff")
+        return einsum(self.w2, silu(h1) * h2, "... d_model d_ff, ... d_ff -> ... d_model")
