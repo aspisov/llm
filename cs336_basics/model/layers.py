@@ -2,7 +2,7 @@ import math
 
 import torch
 import torch.nn as nn
-from einops import einsum, rearrange, repeat
+from einops import einsum, rearrange, reduce, repeat
 
 
 class Linear(nn.Module):
@@ -128,8 +128,7 @@ class RMSNorm(nn.Module):
         in_dtype = x.dtype
         x = x.to(torch.float32)
 
-        rms = torch.sqrt(einsum(x.pow(2), "... d_model -> ...") / self.d_model + self.eps)
-        rms = repeat(rms, "... -> ... 1")
+        rms = torch.sqrt(einsum(x.pow(2), "... d_model -> ...") / self.d_model + self.eps).unsqueeze(-1)
 
         result = x / rms * self.gain
 
@@ -228,6 +227,17 @@ class RotaryPositionalEmbedding(nn.Module):
 
 
 def softmax(x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+    """
+    Apply softmax.
+
+    Args:
+        x (torch.Tensor): Input tensor.
+        dim (int): Dimention to apply softmax over.
+
+    Returns:
+        torch.Tensor: Output tensor.
+    """
+
     x_shifted = x - torch.max(x, dim=dim, keepdim=True).values
     exp_x = torch.exp(x_shifted)
     sum_exp = torch.sum(exp_x, dim=dim, keepdim=True)
@@ -262,3 +272,83 @@ def scaled_dot_product_attention(
     attn_weights = softmax(masked_scores, dim=-1)
 
     return einsum(attn_weights, V, "... queries keys, ... keys d_v -> ... queries d_v")
+
+
+class MultiHeadSelfAttention(nn.Module):
+    """
+    Multi-Head Self-Attention mechanism with optional Rotary Position Embedding.
+
+    Args:
+        d_model (int): Model dimension.
+        num_heads (int): Number of attention heads.
+        max_seq_len (int | None): Maximum sequence length for RoPE.
+        theta (float | None): Base frequency for RoPE.
+        device (torch.device | None): Device to place the layer on.
+        dtype (torch.dtype | None): Data type for the layer parameters.
+    """
+
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        max_seq_len: int | None = None,
+        theta: float | None = None,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__()
+
+        assert d_model % num_heads == 0, "d_model should be divisible by num_heads"
+
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model // num_heads
+        self.d_v = d_model // num_heads
+
+        self.q_proj = Linear(d_model, self.num_heads * self.d_k, device=device, dtype=dtype)
+        self.k_proj = Linear(d_model, self.num_heads * self.d_k, device=device, dtype=dtype)
+        self.v_proj = Linear(d_model, self.num_heads * self.d_v, device=device, dtype=dtype)
+        self.o_proj = Linear(self.num_heads * self.d_v, d_model, device=device, dtype=dtype)
+
+        if theta is not None and max_seq_len is not None:
+            self.rope = RotaryPositionalEmbedding(theta=theta, d_k=self.d_k, max_seq_len=max_seq_len, device=device)
+
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor | None = None) -> torch.Tensor:
+        """
+        Apply multi-head self-attention.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (..., seq_len, d_model).
+            token_positions (torch.Tensor | None): Position indices for RoPE.
+
+        Returns:
+            torch.Tensor: Output tensor of shape (..., seq_len, d_model).
+        """
+        seq_len = x.shape[-2]
+
+        Q = rearrange(
+            self.q_proj(x), "... seq_len (num_heads d_k) -> ... seq_len num_heads d_k", num_heads=self.num_heads
+        )
+        K = rearrange(
+            self.k_proj(x), "... seq_len (num_heads d_k) -> ... seq_len num_heads d_k", num_heads=self.num_heads
+        )
+        V = rearrange(
+            self.v_proj(x), "... seq_len (num_heads d_v) -> ... seq_len num_heads d_v", num_heads=self.num_heads
+        )
+
+        if hasattr(self, "rope") and token_positions is not None:
+            Q = torch.stack([self.rope(Q[..., i, :], token_positions) for i in range(self.num_heads)], dim=-2)
+            K = torch.stack([self.rope(K[..., i, :], token_positions) for i in range(self.num_heads)], dim=-2)
+
+        mask = torch.tril(torch.ones(seq_len, seq_len, device=x.device, dtype=torch.bool))
+
+        Q_attn = rearrange(Q, "... seq_len num_heads d_k -> ... num_heads seq_len d_k")
+        K_attn = rearrange(K, "... seq_len num_heads d_k -> ... num_heads seq_len d_k")
+        V_attn = rearrange(V, "... seq_len num_heads d_v -> ... num_heads seq_len d_v")
+
+        attn_output = scaled_dot_product_attention(Q_attn, K_attn, V_attn, mask)
+
+        attn_output = rearrange(attn_output, "... num_heads seq_len d_v -> ... seq_len (num_heads d_v)")
+        output = self.o_proj(attn_output)
+
+        return output

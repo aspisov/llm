@@ -12,6 +12,7 @@ from torch import Tensor
 from cs336_basics.model.layers import (
     Embedding,
     Linear,
+    MultiHeadSelfAttention,
     RMSNorm,
     RotaryPositionalEmbedding,
     SwiGLU,
@@ -151,7 +152,11 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    attention = MultiHeadSelfAttention(d_model, num_heads)
+    attention.load_state_dict(
+        {"q_proj.w": q_proj_weight, "k_proj.w": k_proj_weight, "v_proj.w": v_proj_weight, "o_proj.w": o_proj_weight}
+    )
+    return attention(in_features)
 
 
 def run_multihead_self_attention_with_rope(
@@ -191,7 +196,11 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    attention = MultiHeadSelfAttention(d_model, num_heads, max_seq_len, theta)
+    attention.load_state_dict(
+        {"q_proj.w": q_proj_weight, "k_proj.w": k_proj_weight, "v_proj.w": v_proj_weight, "o_proj.w": o_proj_weight}
+    )
+    return attention(in_features, token_positions)
 
 
 def run_rope(
