@@ -16,6 +16,7 @@ from cs336_basics.model.layers import (
     RMSNorm,
     RotaryPositionalEmbedding,
     SwiGLU,
+    TransformerBlock,
     scaled_dot_product_attention,
     silu,
     softmax,
@@ -43,7 +44,7 @@ def run_linear(
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
     linear = Linear(d_in, d_out)
-    linear.load_state_dict({"w": weights})
+    linear.load_state_dict({"weight": weights})
     return linear(in_features)
 
 
@@ -96,7 +97,7 @@ def run_swiglu(
         Float[Tensor, "... d_model"]: Output embeddings of the same shape as the input embeddings.
     """
     ffn = SwiGLU(d_model, d_ff)
-    ffn.load_state_dict({"w1": w1_weight, "w2": w2_weight, "w3": w3_weight})
+    ffn.load_state_dict({"w1.weight": w1_weight, "w2.weight": w2_weight, "w3.weight": w3_weight})
     return ffn(in_features)
 
 
@@ -154,7 +155,12 @@ def run_multihead_self_attention(
     """
     attention = MultiHeadSelfAttention(d_model, num_heads)
     attention.load_state_dict(
-        {"q_proj.w": q_proj_weight, "k_proj.w": k_proj_weight, "v_proj.w": v_proj_weight, "o_proj.w": o_proj_weight}
+        {
+            "q_proj.weight": q_proj_weight,
+            "k_proj.weight": k_proj_weight,
+            "v_proj.weight": v_proj_weight,
+            "output_proj.weight": o_proj_weight,
+        }
     )
     return attention(in_features)
 
@@ -198,7 +204,12 @@ def run_multihead_self_attention_with_rope(
     """
     attention = MultiHeadSelfAttention(d_model, num_heads, max_seq_len, theta)
     attention.load_state_dict(
-        {"q_proj.w": q_proj_weight, "k_proj.w": k_proj_weight, "v_proj.w": v_proj_weight, "o_proj.w": o_proj_weight}
+        {
+            "q_proj.weight": q_proj_weight,
+            "k_proj.weight": k_proj_weight,
+            "v_proj.weight": v_proj_weight,
+            "output_proj.weight": o_proj_weight,
+        }
     )
     return attention(in_features, token_positions)
 
@@ -296,7 +307,12 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    transformer_block = TransformerBlock(
+        d_model=d_model, num_heads=num_heads, d_ff=d_ff, max_seq_len=max_seq_len, theta=theta
+    )
+    transformer_block.load_state_dict(weights)
+
+    return transformer_block(in_features)
 
 
 def run_transformer_lm(
@@ -401,11 +417,11 @@ def run_rmsnorm(
         Float[Tensor,"... d_model"]: Tensor of with the same shape as `in_features` with the output of running
         RMSNorm of the `in_features`.
     """
-    rmsnorm = RMSNorm(d_model, eps)
+    ln = RMSNorm(d_model, eps)
 
-    rmsnorm.load_state_dict({"gain": weights})
+    ln.load_state_dict({"weight": weights})
 
-    return rmsnorm(in_features)
+    return ln(in_features)
 
 
 def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:

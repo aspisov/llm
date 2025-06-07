@@ -26,14 +26,16 @@ class Linear(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
 
-        self.w = nn.Parameter(torch.empty(out_features, in_features, device=device, dtype=dtype), requires_grad=True)
+        self.weight = nn.Parameter(
+            torch.empty(out_features, in_features, device=device, dtype=dtype), requires_grad=True
+        )
 
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
         """Initialize the weight matrix using truncated normal distribution."""
         std = math.sqrt(2 / (self.in_features + self.out_features))
-        nn.init.trunc_normal_(self.w, mean=0, std=std, a=-3 * std, b=3 * std)
+        nn.init.trunc_normal_(self.weight, mean=0, std=std, a=-3 * std, b=3 * std)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -45,7 +47,7 @@ class Linear(nn.Module):
         Returns:
             torch.Tensor: Output tensor of shape (..., out_features).
         """
-        return einsum(self.w, x, "... out_features in_features, ... in_features -> ... out_features")
+        return einsum(x, self.weight, "... in_features, out_features in_features -> ... out_features")
 
 
 class Embedding(nn.Module):
@@ -111,7 +113,7 @@ class RMSNorm(nn.Module):
         self.d_model = d_model
         self.eps = eps
 
-        self.gain = nn.Parameter(torch.ones(d_model, device=device, dtype=dtype))
+        self.weight = nn.Parameter(torch.ones(d_model, device=device, dtype=dtype))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -130,7 +132,7 @@ class RMSNorm(nn.Module):
 
         rms = torch.sqrt(einsum(x.pow(2), "... d_model -> ...") / self.d_model + self.eps).unsqueeze(-1)
 
-        result = x / rms * self.gain
+        result = x / rms * self.weight
 
         return result.to(in_dtype)
 
@@ -170,18 +172,9 @@ class SwiGLU(nn.Module):
         self.d_model = d_model
         self.d_ff = d_ff
 
-        self.w1 = nn.Parameter(torch.empty(d_ff, d_model, device=device, dtype=dtype))
-        self.w2 = nn.Parameter(torch.empty(d_model, d_ff, device=device, dtype=dtype))
-        self.w3 = nn.Parameter(torch.empty(d_ff, d_model, device=device, dtype=dtype))
-
-        self.reset_parameters()
-
-    def reset_parameters(self) -> None:
-        """Initialize the weight matrices using truncated normal distribution."""
-        std = math.sqrt(2 / (self.d_model + self.d_ff))
-        nn.init.trunc_normal_(self.w1, mean=0, std=std, a=-3 * std, b=3 * std)
-        nn.init.trunc_normal_(self.w2, mean=0, std=std, a=-3 * std, b=3 * std)
-        nn.init.trunc_normal_(self.w3, mean=0, std=std, a=-3 * std, b=3 * std)
+        self.w1 = Linear(d_model, d_ff, device=device, dtype=dtype)
+        self.w2 = Linear(d_ff, d_model, device=device, dtype=dtype)
+        self.w3 = Linear(d_model, d_ff, device=device, dtype=dtype)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -193,9 +186,7 @@ class SwiGLU(nn.Module):
         Returns:
             torch.Tensor: Output tensor of shape (..., d_model).
         """
-        h1 = einsum(self.w1, x, "... d_ff d_model, ... d_model -> ... d_ff")
-        h2 = einsum(self.w3, x, "... d_ff d_model, ... d_model -> ... d_ff")
-        return einsum(self.w2, silu(h1) * h2, "... d_model d_ff, ... d_ff -> ... d_model")
+        return self.w2(silu(self.w1(x)) * self.w3(x))
 
 
 class RotaryPositionalEmbedding(nn.Module):
@@ -308,7 +299,7 @@ class MultiHeadSelfAttention(nn.Module):
         self.q_proj = Linear(d_model, self.num_heads * self.d_k, device=device, dtype=dtype)
         self.k_proj = Linear(d_model, self.num_heads * self.d_k, device=device, dtype=dtype)
         self.v_proj = Linear(d_model, self.num_heads * self.d_v, device=device, dtype=dtype)
-        self.o_proj = Linear(self.num_heads * self.d_v, d_model, device=device, dtype=dtype)
+        self.output_proj = Linear(self.num_heads * self.d_v, d_model, device=device, dtype=dtype)
 
         if theta is not None and max_seq_len is not None:
             self.rope = RotaryPositionalEmbedding(theta=theta, d_k=self.d_k, max_seq_len=max_seq_len, device=device)
@@ -349,6 +340,34 @@ class MultiHeadSelfAttention(nn.Module):
         attn_output = scaled_dot_product_attention(Q_attn, K_attn, V_attn, mask)
 
         attn_output = rearrange(attn_output, "... num_heads seq_len d_v -> ... seq_len (num_heads d_v)")
-        output = self.o_proj(attn_output)
+        output = self.output_proj(attn_output)
 
         return output
+
+
+class TransformerBlock(nn.Module):
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        d_ff: int,
+        max_seq_len: int,
+        theta: float,
+        eps: float = 0.00001,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__()
+        self.attn = MultiHeadSelfAttention(d_model, num_heads, max_seq_len, theta, device, dtype)
+        self.ffn = SwiGLU(d_model, d_ff, device, dtype)
+        self.ln1 = RMSNorm(d_model, eps, device=device, dtype=dtype)
+        self.ln2 = RMSNorm(d_model, eps, device=device, dtype=dtype)
+
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor | None = None) -> torch.Tensor:
+        if token_positions is None:
+            seq_len = x.shape[-2]
+            token_positions = torch.arange(seq_len, device=x.device)
+
+        x = x + self.attn(self.ln1(x), token_positions)
+        x = x + self.ffn(self.ln2(x))
+        return x
