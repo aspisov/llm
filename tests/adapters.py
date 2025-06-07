@@ -16,6 +16,7 @@ from cs336_basics.model.layers import (
     RMSNorm,
     RotaryPositionalEmbedding,
     SwiGLU,
+    Transformer,
     TransformerBlock,
     scaled_dot_product_attention,
     silu,
@@ -69,7 +70,7 @@ def run_embedding(
 
     embedding = Embedding(vocab_size, d_model)
 
-    embedding.load_state_dict({"embeddings": weights})
+    embedding.load_state_dict({"weight": weights})
 
     return embedding(token_ids)
 
@@ -308,7 +309,7 @@ def run_transformer_block(
         running the Transformer block on the input features while using RoPE.
     """
     transformer_block = TransformerBlock(
-        d_model=d_model, num_heads=num_heads, d_ff=d_ff, max_seq_len=max_seq_len, theta=theta
+        d_model=d_model, num_heads=num_heads, d_ff=d_ff, max_seq_len=max_seq_len, rope_theta=theta
     )
     transformer_block.load_state_dict(weights)
 
@@ -394,7 +395,17 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    transformer = Transformer(
+        vocab_size=vocab_size,
+        context_length=context_length,
+        num_layers=num_layers,
+        d_model=d_model,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        rope_theta=rope_theta,
+    )
+    transformer.load_state_dict(weights)
+    return transformer(in_indices)
 
 
 def run_rmsnorm(
