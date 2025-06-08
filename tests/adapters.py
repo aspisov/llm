@@ -9,7 +9,7 @@ import torch
 from jaxtyping import Float, Int
 from torch import Tensor
 
-from cs336_basics.model.layers import (
+from cs336_basics.model import (
     Embedding,
     Linear,
     MultiHeadSelfAttention,
@@ -23,6 +23,7 @@ from cs336_basics.model.layers import (
     silu,
     softmax,
 )
+from cs336_basics.optimizers import AdamW
 from cs336_basics.tokenizer.bpe_trainer import train_bpe
 from cs336_basics.tokenizer.tokenizer import Tokenizer
 
@@ -524,7 +525,7 @@ def get_adamw_cls() -> type[torch.optim.Optimizer]:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
-    raise NotImplementedError
+    return AdamW
 
 
 def run_get_lr_cosine_schedule(
