@@ -23,7 +23,7 @@ from cs336_basics.model import (
     silu,
     softmax,
 )
-from cs336_basics.optimizers import AdamW
+from cs336_basics.optimizers import AdamW, learning_rate_schedule
 from cs336_basics.tokenizer.bpe_trainer import train_bpe
 from cs336_basics.tokenizer.tokenizer import Tokenizer
 
@@ -553,7 +553,7 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    raise NotImplementedError
+    return learning_rate_schedule(it, max_learning_rate, min_learning_rate, warmup_iters, cosine_cycle_iters)
 
 
 def run_save_checkpoint(
