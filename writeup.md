@@ -93,3 +93,81 @@ Resource requirements: ≤ 30 minutes (no GPUs), ≤ 30GB RAM Hint You should be
 (d) Using your TinyStories and OpenWebText tokenizers, encode the respective training and development datasets into a sequence of integer token IDs. We’ll use this later to train our language model. We recommend serializing the token IDs as a NumPy array of datatype uint16. Why is uint16 an appropriate choice?
 
 - Deliverable: because `uint16` has supports values from 0 to 65535, which is just enough for all our ids.
+
+
+
+## Problem (transformer_accounting): Transformer LM resource accounting (5 points)
+
+(a) Consider GPT-2 XL, which has the following configuration:
+
+
+- `vocab_size` : 50,257
+- `context_length` : 1,024
+- `num_layers` : 48 
+- `d_model` : 1,600
+- `num_heads` : 25 
+- `d_ff` : 6,400
+
+Suppose we constructed our model using this configuration. How many trainable parameters would our model have? Assuming each parameter is represented using single-precision floating point, how much memory is required to just load this model?
+
+- Deliverable: `vocab_size` * `d_model` + (`d_model`^2 * 4 + `d_model` * 2 + `d_model` * `d_ff` * 3) * `num_layers` + `d_model` + `d_model` * `vocab_size` = $50257 \cdot 1600 + (1600^2 \cdot 4 + 1600 \cdot 2 + 1600 \cdot 6400 \cdot 3) \cdot 48 + 1600 + 1600 \cdot 50257 = 2 127 057 600$ $\implies$ **8.51 GB**
+
+(b) Identify the matrix multiplies required to complete a forward pass of our GPT-2 XL-shaped model. How many FLOPs do these matrix multiplies require in total? Assume that our input sequence has context_length tokens.
+
+Deliverable: 
+- Matrix multiplies: 
+  - Embeddings: 0
+  - Transformer Block:
+    - MHA: 
+      - q_proj @ x: 2 * d_model * d_model * seq_len
+      - k_proj @ x: 2 * d_model * d_model * seq_len
+      - v_proj @ x: 2 * d_model * d_model * seq_len
+      - Q @ K^T: 2 * seq_len * d_model * seq_len
+      - attn @ V: 2 * seq_len * seq_len * d_model
+      - output_proj @ attn_output: 2 * seq_len * d_model * d_model
+    - FFN: 
+      - w1 @ x: 2 * seq_len * d_ff * d_model
+      - w2 @ x: 2 * seq_len * d_ff * d_model
+      - w3 @ h: 2 * d_model * d_ff * seq_len
+  - LM Head: 2 * seq_len * d_model * vocab_size
+- Total: (2 * 1024 * 1600 * 1600 * 3 + 2 * 1024^2 * 1600 + 2 * 1024^2 * 1600 + 2 * 1024 * 1600 * 1600 + 2 * 1024 * 6400 * 1600 * 3) * 48 + 2 * 1024 * 1600 * 50257 = 4 513 336 524 800 FPOPS = 4.51 TFLOPS
+  - MHA: 1 328 755 507 200
+  - FFN: 3 019 898 880 000
+  - LM Head: 164 682 137 600
+
+
+(c) Based on your analysis above, which parts of the model require the most FLOPs?
+
+- Deliverable: FFN
+
+(d) Repeat your analysis with GPT-2 small (12 layers, 768 d_model, 12 heads), GPT-2 medium (24 layers, 1024 d_model, 16 heads), and GPT-2 large (36 layers, 1280 d_model, 20 heads). As the model size increases, which parts of the Transformer LM take up proportionally more or less of the total FLOPs?
+
+Deliverable: For each model, provide a breakdown of model components and its associated FLOPs (as a proportion of the total FLOPs required for a forward pass). In addition, provide a one-to-two sentence description of how varying the model size changes the proportional FLOPs of each component.
+- GPT-2 small: 0.54 TFLOPS
+  - MHA: 17.96% 
+  - FFN: 67.35% 
+  - LM HEAD: 14.69%
+- GPT-2 medium: 1.38 TFLOPS
+  - MHA: 22.39% 
+  - FFN: 69.98% 
+  - LM HEAD: 7.63%
+- GPT-2 large: 2.62 TFLOPS
+  - MHA: 25.82%
+  - FFN: 69.15%
+  - LM HEAD: 5.03%
+- GPT-2 XL: 4.51 TFLOPS
+  - MHA: 29.44% 
+  - FFN: 66.91% 
+  - LM HEAD: 3.65%
+
+As model size increases LM head becomes less and less percentage of total FLOPS.
+
+(e) Take GPT-2 XL and increase the context length to 16,384. How does the total FLOPs for one forward pass change? How do the relative contribution of FLOPs of the model components change?
+
+- Deliverable: 
+GPT-2 XL with 16384 context length: 149.52 TFLOPS
+  - MHA: 65.92% 
+  - FFN: 32.32% 
+  - LM HEAD: 1.76%
+
+With large context length we get a much greater impact of MHA on total FLOPS count because it has context length squared term.
