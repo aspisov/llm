@@ -1,3 +1,6 @@
+import os
+import typing
+
 import numpy as np
 import numpy.typing as npt
 import torch
@@ -32,3 +35,25 @@ def get_batch(
     target_sequences = torch.tensor(dataset[target_indices], dtype=torch.long, device=device)
 
     return input_sequences, target_sequences
+
+
+def save_checkpoint(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    iteration: int,
+    out: str | os.PathLike | typing.BinaryIO | typing.IO[bytes],
+):
+    checkpoint = {"model": model.state_dict(), "optimizer": optimizer.state_dict(), "iteration": iteration}
+    torch.save(checkpoint, out)
+
+
+def load_checkpoint(
+    src: str | os.PathLike | typing.BinaryIO | typing.IO[bytes],
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+) -> int:
+    device = next(model.parameters()).device
+    checkpoint = torch.load(src, map_location=device)
+    model.load_state_dict(checkpoint["model"])
+    optimizer.load_state_dict(checkpoint["optimizer"])
+    return checkpoint["iteration"]
