@@ -23,7 +23,7 @@ from cs336_basics.model import (
     silu,
     softmax,
 )
-from cs336_basics.optimizers import AdamW, gradient_clipping, learning_rate_schedule
+from cs336_basics.optimizers import AdamW, clip_gradients, learning_rate_schedule
 from cs336_basics.tokenizer.bpe_trainer import train_bpe
 from cs336_basics.tokenizer.tokenizer import Tokenizer
 from cs336_basics.utils import get_batch, load_checkpoint, save_checkpoint
@@ -519,7 +519,7 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
 
     The gradients of the parameters (parameter.grad) should be modified in-place.
     """
-    gradient_clipping(parameters, max_l2_norm)
+    clip_gradients(parameters, max_l2_norm)
 
 
 def get_adamw_cls() -> type[torch.optim.Optimizer]:
