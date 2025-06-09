@@ -1,6 +1,12 @@
 # CS336 Spring 2025 Assignment 1: Basics
 
 This is my implementation of [Stanford CS336 assignment 1](./cs336_spring2025_assignment1_basics.pdf).
+I have implemented:
+- An optimizer BPE tokenizer
+- A complete modern transformer model architecture
+- Training setup with AdamW optimizer and cosine learning rate scheduling
+- End-to-end training pipeline for language model experiments
+- Performance analysis and resource accounting for different model sizes
 
 ## Setup
 
