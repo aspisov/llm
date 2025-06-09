@@ -171,3 +171,36 @@ GPT-2 XL with 16384 context length: 149.52 TFLOPS
   - LM HEAD: 1.76%
 
 With large context length we get a much greater impact of MHA on total FLOPS count because it has context length squared term.
+
+
+## Problem (adamwAccounting): Resource accounting for training with AdamW (2 points)
+
+Let us compute how much memory and compute running AdamW requires. Assume we are using float32 for every tensor.
+
+(a) How much peak memory does running AdamW require? Decompose your answer based on the memory usage of the parameters, activations, gradients, and optimizer state. Express your answer in terms of the batch_size and the model hyperparameters (vocab_size, context_length, num_layers, d_model, num_heads). Assume d_ff = 4 × d_model.
+
+For simplicity, when calculating memory usage of activations, consider only the following components:
+
+- Transformer block
+  - RMSNorm(s)
+  - Multi-head self-attention sublayer: $QKV$ projections, $Q^T K$ matrix multiply, softmax, weighted sum of values, output projection.
+  - Position-wise feed-forward: $W_1$ matrix multiply, $\mathrm{SiLU}$, $W_2$ matrix multiply
+- final RMSNorm
+- output embedding
+- cross-entropy on logits
+
+- Deliverable: [script](scripts/transformer_accounting.py)
+
+
+
+(b) Instantiate your answer for a GPT-2 XL-shaped model to get an expression that only depends on the batch_size. What is the maximum batch size you can use and still fit within 80GB memory?
+
+- Deliverable: [script](scripts/transformer_accounting.py), 2
+
+(c) How many FLOPs does running one step of AdamW take?
+
+Deliverable: An algebraic expression, with a brief justification.
+
+(d) Model FLOPs utilization (MFU) is defined as the ratio of observed throughput (tokens per second) relative to the hardware’s theoretical peak FLOP throughput [Chowdhery et al., 2022]. An NVIDIA A100 GPU has a theoretical peak of 19.5 teraFLOP/s for float32 operations. Assuming you are able to get 50% MFU, how long would it take to train a GPT-2 XL for 400K steps and a batch size of 1024 on a single A100? Following Kaplan et al. [2020] and Hoffmann et al. [2022], assume that the backward pass has twice the FLOPs of the forward pass.
+
+Deliverable: The number of days training would take, with a brief justification.
