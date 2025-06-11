@@ -70,6 +70,9 @@ class Transformer(nn.Module):
         self.ln_final = RMSNorm(d_model=d_model, device=device, dtype=dtype)
         self.lm_head = Linear(d_model, vocab_size, device=device, dtype=dtype)
 
+    def count_parameters(self):
+        return sum(p.numel() for p in self.parameters())
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.token_embeddings(x)
 

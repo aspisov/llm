@@ -44,6 +44,7 @@ def save_checkpoint(
     out: str | os.PathLike | typing.BinaryIO | typing.IO[bytes],
 ):
     checkpoint = {"model": model.state_dict(), "optimizer": optimizer.state_dict(), "iteration": iteration}
+    os.makedirs(os.path.dirname(out), exist_ok=True)  # type:ignore
     torch.save(checkpoint, out)
 
 
@@ -52,6 +53,9 @@ def load_checkpoint(
     model: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
 ) -> int:
+    if not os.path.exists(src):  # type:ignore
+        raise FileNotFoundError(f"Checkpoint file not found: {src}")
+
     device = next(model.parameters()).device
     checkpoint = torch.load(src, map_location=device)
     model.load_state_dict(checkpoint["model"])

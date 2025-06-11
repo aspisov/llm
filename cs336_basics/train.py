@@ -2,6 +2,7 @@ import logging
 import os
 import typing
 from dataclasses import dataclass
+from pathlib import Path
 
 import click
 import numpy as np
@@ -43,8 +44,8 @@ class Config:
     val_frequency: int
     batch_size: int
 
-    initial_checkpoint: str | os.PathLike | typing.BinaryIO | typing.IO[bytes] | None
-    checkpoints_path: str | os.PathLike | typing.BinaryIO | typing.IO[bytes]
+    initial_checkpoint: str | None
+    checkpoints_path: str
     checkpoint_frequency: int | None
 
     @classmethod
@@ -101,8 +102,31 @@ class Config:
         )
 
 
-def evaluate_model(model, val_dataset):
-    pass
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+def evaluate_model(model, val_dataset, config: Config):
+    model.eval()
+    total_loss = 0
+    num_batches = 10
+
+    with torch.inference_mode():
+        for _ in range(num_batches):
+            inputs, target = get_batch(
+                dataset=val_dataset,
+                batch_size=config.batch_size,
+                context_length=config.context_length,
+                device=config.device,
+            )
+            logits = model(inputs)
+            loss = cross_entropy(y=target, logits=logits)
+            total_loss += loss.item()
+
+    model.train()
+    return total_loss / num_batches
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 @click.command()
@@ -126,11 +150,23 @@ def main(config_path: str):
         device=torch.device(config.device),
         dtype=config.dtype,
     )
+
     optimizer = AdamW(model.parameters(), lr=0, betas=config.betas, weight_decay=config.weight_decay)
 
-    train_dataset = np.load(config.train_path, mmap_mode="r")["arr_0"]
+    start_iteration = 0
+    if config.initial_checkpoint:
+        logger.info(f"Loading checkpoint from {config.initial_checkpoint}")
+        start_iteration = load_checkpoint(config.initial_checkpoint, model, optimizer)
+        logger.info(f"Resumed training from iteration {start_iteration}")
 
-    for it in range(config.num_iterations):
+    print(f"Total parameters: {model.count_parameters() / 10**6:.02f}M")
+
+    train_dataset = np.load(config.train_path, mmap_mode="r")["arr_0"]
+    val_dataset = np.load(config.val_path, mmap_mode="r")["arr_0"]
+
+    # model = torch.compile(model)
+
+    for it in range(start_iteration, config.num_iterations):
         inputs, targets = get_batch(
             train_dataset, batch_size=config.batch_size, context_length=config.context_length, device=config.device
         )
@@ -147,14 +183,26 @@ def main(config_path: str):
         optimizer.step()
         optimizer.zero_grad()
 
-        if it % 1 == 0:
+        if it % config.val_frequency == 0 and it > 0:
+            model.eval()
+            val_loss = evaluate_model(model, val_dataset, config)
+            model.train()
+            logger.info(f"Iteration: {it}, val loss: {val_loss}")
+            logger.info(model.generate_text("I'm a language model and", tokenizer, max_tokens=50))
+
+        # Save checkpoint
+        if config.checkpoint_frequency and (it + 1) % config.checkpoint_frequency == 0:
+            checkpoint_path = Path(config.checkpoints_path) / f"checkpoint_iter_{it + 1}.pt"
+            save_checkpoint(model, optimizer, it, str(checkpoint_path))
+            logger.info(f"Saved checkpoint to {checkpoint_path}")
+
+        if it % 25 == 0:
             logger.info(f"Iteration: {it}, train loss: {loss.cpu().item()}")
 
-        if it % 10 == 0:
-            logger.info(model.generate_text("I'm a language model", tokenizer=tokenizer, max_tokens=10))
-
-        if config.checkpoint_frequency and (it + 1) % config.checkpoint_frequency == 0:
-            save_checkpoint(model, optimizer, it, config.checkpoints_path)
+    # Save final checkpoint
+    final_checkpoint_path = Path(config.checkpoints_path) / "final_checkpoint.pt"
+    save_checkpoint(model, optimizer, config.num_iterations - 1, final_checkpoint_path)
+    logger.info(f"Saved final checkpoint to {final_checkpoint_path}")
 
 
 if __name__ == "__main__":
