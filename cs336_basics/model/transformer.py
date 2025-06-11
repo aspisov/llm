@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 
 from cs336_basics.model import Embedding, Linear, MultiHeadSelfAttention, RMSNorm, SwiGLU
+from cs336_basics.model.inference import top_p_sampling
+from cs336_basics.tokenizer import Tokenizer
 
 
 class TransformerBlock(nn.Module):
@@ -46,6 +48,8 @@ class Transformer(nn.Module):
     ):
         super().__init__()
 
+        self.context_length = context_length
+
         self.token_embeddings = Embedding(vocab_size, d_model, device=device, dtype=dtype)
 
         self.layers = nn.ModuleList(
@@ -75,3 +79,28 @@ class Transformer(nn.Module):
         x = self.ln_final(x)
         x = self.lm_head(x)
         return x
+
+    def generate_text(
+        self, prompt: str, tokenizer: Tokenizer, temperature: float = 1, top_p: float = 1, max_tokens: int = 5
+    ):
+        special_token_ids = {}
+        if tokenizer.special_tokens:
+            special_token_ids = set(tokenizer.encode("".join(tokenizer.special_tokens)))
+
+        device = next(self.parameters()).device
+        token_ids = torch.tensor(tokenizer.encode(prompt), device=device).unsqueeze(0)
+
+        for _ in range(max_tokens):
+            if token_ids.shape[1] >= self.context_length:
+                break
+
+            logits = self.forward(token_ids)
+
+            preds = top_p_sampling(logits=logits[:, -1, :], p=top_p, temperature=temperature)
+
+            if preds[-1].item() in special_token_ids:
+                break
+
+            token_ids = torch.cat([token_ids, preds], dim=-1)
+
+        return tokenizer.decode(token_ids.squeeze(0).cpu().tolist())

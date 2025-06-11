@@ -4,6 +4,7 @@ from .activations import softmax, silu
 from .attention import MultiHeadSelfAttention, RotaryPositionalEmbedding, scaled_dot_product_attention
 from .feedforward import SwiGLU
 from .transformer import Transformer, TransformerBlock
+from .inference import top_p_sampling
 
 __all__ = [
     "Linear", "Embedding", "RMSNorm",
@@ -12,4 +13,5 @@ __all__ = [
     "TransformerBlock", "Transformer",
     "silu", "softmax",
     "cross_entropy", "log_softmax",
+    "top_p_sampling"
 ]

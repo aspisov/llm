@@ -10,6 +10,7 @@ import yaml
 
 from cs336_basics.model import Transformer, cross_entropy
 from cs336_basics.optimizers import AdamW, clip_gradients, learning_rate_schedule
+from cs336_basics.tokenizer import Tokenizer
 from cs336_basics.utils import get_batch, load_checkpoint, save_checkpoint
 
 logger = logging.getLogger(__name__)
@@ -109,6 +110,11 @@ def evaluate_model(model, val_dataset):
 def main(config_path: str):
     config = Config.from_yaml(config_path)
 
+    tokenizer = Tokenizer.from_files(
+        "outputs/tokenizers/tinystories_bpe_vocab.json",
+        "outputs/tokenizers/tinystories_bpe_merges.txt",
+        ["<|endoftext|>"],
+    )
     model = Transformer(
         vocab_size=config.vocab_size,
         context_length=config.context_length,
@@ -143,6 +149,9 @@ def main(config_path: str):
 
         if it % 1 == 0:
             logger.info(f"Iteration: {it}, train loss: {loss.cpu().item()}")
+
+        if it % 10 == 0:
+            logger.info(model.generate_text("I'm a language model", tokenizer=tokenizer, max_tokens=10))
 
         if config.checkpoint_frequency and (it + 1) % config.checkpoint_frequency == 0:
             save_checkpoint(model, optimizer, it, config.checkpoints_path)
