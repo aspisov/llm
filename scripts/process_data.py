@@ -33,43 +33,14 @@ def save_encoded(input_path: str, output_path: str, tokenizer: Tokenizer):
 
 
 def main():
-    tinystories_path = "data/TinyStoriesV2-GPT4-valid.txt"
-
-    docs = load_docs(tinystories_path, 10, "<|endoftext|>")
-
     tinystories_tokenizer = Tokenizer.from_files(
         "outputs/tokenizers/tinystories_bpe_vocab.json",
         "outputs/tokenizers/tinystories_bpe_merges.txt",
         ["<|endoftext|>"],
     )
 
-    save_encoded(tinystories_path, "data/TinyStories-valid", tinystories_tokenizer)
-
-    bytes = docs.encode("utf-8")
-    tokens = tinystories_tokenizer.encode(docs)
-
-    print("Compression ration for TinyStories:", len(bytes) / len(tokens))
-
-    owt_path = "data/owt_valid.txt"
-
-    docs = load_docs(owt_path, 10, "<|endoftext|>")
-
-    owt_tokenizer = Tokenizer.from_files(
-        "outputs/tokenizers/owt_bpe_vocab.json",
-        "outputs/tokenizers/owt_bpe_merges.txt",
-        ["<|endoftext|>"],
-    )
-
-    bytes = docs.encode("utf-8")
-    tokens = owt_tokenizer.encode(docs)
-
-    print("Compression ration for OWT:", len(bytes) / len(tokens))
-
-    tokens = tinystories_tokenizer.encode(docs)
-    print("Compression ration for OWT with TinyStories tokenizer:", len(bytes) / len(tokens))
-
-    save_encoded(tinystories_path, "data/TinyStories-valid", tinystories_tokenizer)
-    save_encoded(owt_path, "data/owt-valid", owt_tokenizer)
+    save_encoded("data/TinyStoriesV2-GPT4-valid.txt", "data/TinyStories-valid", tinystories_tokenizer)
+    save_encoded("data/TinyStoriesV2-GPT4-train.txt", "data/TinyStories-train", tinystories_tokenizer)
 
 
 if __name__ == "__main__":

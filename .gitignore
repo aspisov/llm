@@ -171,3 +171,6 @@ profile.json
 
 .DS_Store
 outputs/
+
+.hf_home/
+.venv-backups/

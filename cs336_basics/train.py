@@ -132,6 +132,9 @@ def evaluate_model(model, val_dataset, config: Config):
 @click.command()
 @click.option("--config-path", default="config.yaml", help="Path to config file")
 def main(config_path: str):
+
+    torch.set_float32_matmul_precision('high')
+    
     config = Config.from_yaml(config_path)
 
     tokenizer = Tokenizer.from_files(
@@ -164,23 +167,32 @@ def main(config_path: str):
     train_dataset = np.load(config.train_path, mmap_mode="r")["arr_0"]
     val_dataset = np.load(config.val_path, mmap_mode="r")["arr_0"]
 
-    # model = torch.compile(model)
+    model = torch.compile(model)
+    scaler = torch.amp.GradScaler() if config.dtype == "float16" else None
 
     for it in range(start_iteration, config.num_iterations):
         inputs, targets = get_batch(
             train_dataset, batch_size=config.batch_size, context_length=config.context_length, device=config.device
         )
-        logits = model(inputs)
-        loss = cross_entropy(y=targets, logits=logits)
+        with torch.autocast(device_type=config.device, dtype=config.dtype):
+            logits = model(inputs)
+            loss = cross_entropy(y=targets, logits=logits)
 
-        loss.backward()
+        if scaler is not None:
+            scaler.scale(loss).backward()
+        else:
+            loss.backward()
 
         lr = learning_rate_schedule(it, config.max_lr, config.min_lr, config.warmup_iters, config.cosine_cycle_iters)
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr
 
         clip_gradients(model.parameters(), config.max_l2_norm)
-        optimizer.step()
+        if scaler is not None:
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            optimizer.step()
         optimizer.zero_grad()
 
         if it % config.val_frequency == 0 and it > 0:
@@ -196,7 +208,7 @@ def main(config_path: str):
             save_checkpoint(model, optimizer, it, str(checkpoint_path))
             logger.info(f"Saved checkpoint to {checkpoint_path}")
 
-        if it % 25 == 0:
+        if it % 100 == 0:
             logger.info(f"Iteration: {it}, train loss: {loss.cpu().item()}")
 
     # Save final checkpoint

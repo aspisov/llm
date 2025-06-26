@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
 
-NUM_PROCESSES = 11
+NUM_PROCESSES = 20
 
 
 def count_pretokens_in_chunk(args) -> dict[str, int]:

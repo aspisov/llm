@@ -74,12 +74,12 @@ class Tokenizer:
     def encode(self, text: str) -> list[int]:
         ids = []
         if not self.special_tokens:
-            for pretoken in tqdm(re.finditer(PAT, text)):
+            for pretoken in re.finditer(PAT, text):
                 ids.extend(self.encode_pretoken(pretoken.group()))
             return ids
 
         delimiters = "|".join(re.escape(token) for token in self.special_tokens)
-        for chunk in tqdm(re.split(f"({delimiters})", text)):
+        for chunk in re.split(f"({delimiters})", text):
             if not chunk:
                 continue
 
