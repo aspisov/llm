@@ -200,7 +200,7 @@ def main(config_path: str):
             val_loss = evaluate_model(model, val_dataset, config)
             model.train()
             logger.info(f"Iteration: {it}, val loss: {val_loss}")
-            logger.info(model.generate_text("I'm a language model and", tokenizer, max_tokens=50))
+            logger.info(model.generate_text("I'm a language model and", tokenizer, max_tokens=256, top_p=0.4))
 
         # Save checkpoint
         if config.checkpoint_frequency and (it + 1) % config.checkpoint_frequency == 0:
