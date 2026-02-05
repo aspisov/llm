@@ -31,7 +31,7 @@ uv run pytest
 
 ### Run training loop
 ```sh 
-uv run cs336_basics/train.py --config-path=config.yaml
+uv run llm_scratch/train/torch/pretrain_loop.py --config-path=config.yaml
 ```
 
 ### Download data
@@ -51,4 +51,3 @@ gunzip owt_valid.txt.gz
 
 cd ..
 ```
-

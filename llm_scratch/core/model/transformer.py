@@ -1,9 +1,11 @@
 import torch
 import torch.nn as nn
 
-from cs336_basics.model import Embedding, Linear, MultiHeadSelfAttention, RMSNorm, SwiGLU
-from cs336_basics.model.inference import top_p_sampling
-from cs336_basics.tokenizer import Tokenizer
+from .attention import MultiHeadSelfAttention
+from .basic_layers import Embedding, Linear, RMSNorm
+from .feedforward import SwiGLU
+from .inference import top_p_sampling
+from ..tokenizer_py import Tokenizer
 
 
 class TransformerBlock(nn.Module):

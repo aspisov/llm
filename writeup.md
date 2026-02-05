@@ -55,7 +55,7 @@ Your BPE training function should return the resulting vocabulary and merges:
 
 To test your BPE training function against our provided tests, you will first need to implement the test adapter at `[adapters.run_train_bpe]`. Then, run `uv run pytest tests/test_train_bpe.py`. Your implementation should be able to pass all tests. Optionally (this could be a large time-investment), you can implement the key parts of your training method using some systems language, for instance C++ (consider cppyy for this) or Rust (using PyO3). If you do this, be aware of which operations require copying vs reading directly from Python memory, and make sure to leave build instructions, or make sure it builds using only pyproject.toml. Also note that the GPT-2 regex is not well-supported in most regex engines and will be too slow in most that do. We have verified that Oniguruma is reasonably fast and supports negative lookahead, but the regex package in Python is, if anything, even faster.
 
-[code](cs336_basics/tokenizer/bpe.py)
+[code](llm_scratch/core/tokenizer_py/bpe_trainer.py)
 
 ## Problem (train_bpe_tinystories): BPE Training on TinyStories (2 points)
 

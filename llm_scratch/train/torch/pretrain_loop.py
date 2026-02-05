@@ -9,10 +9,10 @@ import numpy as np
 import torch
 import yaml
 
-from cs336_basics.model import Transformer, cross_entropy
-from cs336_basics.optimizers import AdamW, clip_gradients, learning_rate_schedule
-from cs336_basics.tokenizer import Tokenizer
-from cs336_basics.utils import get_batch, load_checkpoint, save_checkpoint
+from llm_scratch.core.model import Transformer, cross_entropy
+from llm_scratch.core.optimizers import AdamW, clip_gradients, learning_rate_schedule
+from llm_scratch.core.tokenizer_py import Tokenizer
+from llm_scratch.utils import get_batch, load_checkpoint, save_checkpoint
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")

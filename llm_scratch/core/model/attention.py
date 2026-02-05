@@ -4,7 +4,8 @@ import torch
 import torch.nn as nn
 from einops import einsum, rearrange
 
-from cs336_basics.model import Linear, softmax
+from .activations import softmax
+from .basic_layers import Linear
 
 
 class RotaryPositionalEmbedding(nn.Module):
