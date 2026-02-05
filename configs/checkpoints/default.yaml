@@ -1,3 +1,3 @@
-initial_checkpoint: "outputs/checkpoints/checkpoint_iter_12500.pt"
-checkpoints_path: "outputs/checkpoints"
-checkpoint_frequency: 2500
+initial_checkpoint: null
+checkpoints_path: ${hydra:runtime.output_dir}/checkpoints
+checkpoint_frequency: ${training.checkpoint_frequency}

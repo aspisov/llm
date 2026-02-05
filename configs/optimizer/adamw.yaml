@@ -1,0 +1,4 @@
+_target_: llm_scratch.core.optimizers.AdamW
+lr: ${training.max_lr}
+betas: ${training.betas}
+weight_decay: ${training.weight_decay}

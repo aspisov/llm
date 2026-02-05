@@ -1,0 +1,5 @@
+_target_: llm_scratch.train.lightning.schedulers.build_cosine_scheduler
+max_lr: ${training.max_lr}
+min_lr: ${training.min_lr}
+warmup_iters: ${training.warmup_iters}
+cosine_cycle_iters: ${training.cosine_cycle_iters}

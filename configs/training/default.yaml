@@ -8,3 +8,4 @@ num_iterations: 20001
 batch_size: 32
 val_frequency: 500
 max_l2_norm: 10
+checkpoint_frequency: 2500

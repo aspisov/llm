@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import torch
 from hydra import main as hydra_main
-from lightning.pytorch import Trainer
+from hydra.utils import instantiate
 from lightning.pytorch.callbacks import ModelCheckpoint
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
-from llm_scratch.data.datamodules.pretrain_datamodule import PretrainDataModule
-from llm_scratch.train.config import Config
-from llm_scratch.train.lightning.pretrain_module import PretrainLightningModule
+from llm_scratch.experiments.log_run import log_run
+from llm_scratch.train.factories import resolve_dtype
 
 
 def _map_accelerator(device: str) -> str:
@@ -31,42 +30,31 @@ def _map_precision(dtype: torch.dtype) -> str | int:
     raise ValueError(f"Unsupported dtype: {dtype}")
 
 
-def _build_callbacks(config: Config) -> list[ModelCheckpoint]:
-    callbacks: list[ModelCheckpoint] = []
-    if config.checkpoint_frequency is not None:
-        callbacks.append(
-            ModelCheckpoint(
-                dirpath=config.checkpoints_path,
-                every_n_train_steps=config.checkpoint_frequency,
-                save_last=True,
-                filename="checkpoint_iter_{step}",
-            )
-        )
-    return callbacks
-
-
 @hydra_main(config_path="../../../configs", config_name="config", version_base="1.3")
 def main(cfg: DictConfig) -> None:
     torch.set_float32_matmul_precision("high")
 
-    config = Config.from_dict(OmegaConf.to_container(cfg, resolve=True))
-    module = PretrainLightningModule(config)
-    datamodule = PretrainDataModule(config)
+    model = instantiate(cfg.model)
+    module = instantiate(cfg.module, model=model)
+    datamodule = instantiate(cfg.data)
+    callbacks: list[ModelCheckpoint] = instantiate(cfg.callbacks)
+    logger = instantiate(cfg.logger)
 
-    trainer = Trainer(
-        accelerator=_map_accelerator(config.device),
-        devices=cfg.trainer.devices,
-        max_steps=config.num_iterations,
-        val_check_interval=config.val_frequency,
-        limit_val_batches=cfg.trainer.limit_val_batches,
-        gradient_clip_val=config.max_l2_norm,
-        gradient_clip_algorithm="norm",
-        precision=_map_precision(config.dtype),
-        callbacks=_build_callbacks(config),
-        fast_dev_run=cfg.trainer.fast_dev_run,
+    log_run(cfg)
+
+    dtype = resolve_dtype(cfg.hardware.dtype)
+    accelerator = _map_accelerator(cfg.hardware.device)
+    precision = _map_precision(dtype)
+
+    trainer = instantiate(
+        cfg.trainer,
+        accelerator=accelerator,
+        precision=precision,
+        callbacks=callbacks,
+        logger=logger,
     )
 
-    trainer.fit(module, datamodule=datamodule, ckpt_path=config.initial_checkpoint)
+    trainer.fit(module, datamodule=datamodule, ckpt_path=cfg.checkpoints.initial_checkpoint)
 
 
 if __name__ == "__main__":

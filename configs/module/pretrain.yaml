@@ -1,0 +1,6 @@
+_target_: llm_scratch.train.lightning.pretrain_module.PretrainLightningModule
+_recursive_: false
+model: ${model}
+optimizer_cfg: ${optimizer}
+scheduler_cfg: ${scheduler}
+training: ${training}

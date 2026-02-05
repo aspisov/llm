@@ -1,2 +1,2 @@
-device: "cuda"
-dtype: "bfloat16"
+device: cuda
+dtype: bfloat16
