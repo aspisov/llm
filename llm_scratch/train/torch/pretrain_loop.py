@@ -9,7 +9,6 @@ from omegaconf import DictConfig
 from llm_scratch.core.model import cross_entropy
 from llm_scratch.core.optimizers import clip_gradients, learning_rate_schedule
 from llm_scratch.core.tokenizer_py import Tokenizer
-from llm_scratch.train.factories import resolve_dtype
 from llm_scratch.utils import get_batch, load_checkpoint, save_checkpoint
 
 logger = logging.getLogger(__name__)
@@ -46,7 +45,6 @@ def evaluate_model(model, val_dataset, cfg: DictConfig):
 @hydra_main(config_path="../../../configs", config_name="config", version_base="1.3")
 def main(cfg: DictConfig) -> None:
     torch.set_float32_matmul_precision("high")
-    dtype = resolve_dtype(cfg.hardware.dtype)
 
     tokenizer = Tokenizer.from_files(
         "outputs/tokenizers/tinystories_bpe_vocab.json",
@@ -54,6 +52,7 @@ def main(cfg: DictConfig) -> None:
         ["<|endoftext|>"],
     )
     model = instantiate(cfg.model)
+    dtype = next(model.parameters()).dtype
     optimizer = instantiate(cfg.optimizer, params=model.parameters(), lr=0)
 
     start_iteration = 0

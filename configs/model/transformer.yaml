@@ -1,4 +1,4 @@
-_target_: llm_scratch.train.factories.build_transformer
+_target_: llm_scratch.core.model.Transformer
 vocab_size: 10000
 context_length: 256
 num_layers: 4
@@ -6,5 +6,10 @@ d_model: 512
 num_heads: 32
 d_ff: 1344
 rope_theta: 10000
-device: ${hardware.device}
-dtype: ${hardware.dtype}
+device:
+  _target_: torch.device
+  _args_:
+    - ${hardware.device}
+dtype:
+  _target_: llm_scratch.train.hydra_types.to_torch_dtype
+  name: ${hardware.dtype}
