@@ -1,0 +1,12 @@
+defaults:
+  - model: default
+  - data: default
+  - training: default
+  - checkpoints: default
+  - hardware: default
+  - trainer: default
+  - _self_
+
+hydra:
+  job:
+    chdir: false

@@ -1,0 +1,3 @@
+initial_checkpoint: "outputs/checkpoints/checkpoint_iter_12500.pt"
+checkpoints_path: "outputs/checkpoints"
+checkpoint_frequency: 2500
