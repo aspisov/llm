@@ -1,20 +1,2 @@
 defaults:
-  - model: transformer
-  - data: pretrain
-  - training: default
-  - checkpoints: default
-  - hardware: default
-  - optimizer: adamw
-  - scheduler: cosine
-  - module: pretrain
-  - trainer: default
-  - callbacks: default
-  - logger: default
-  - paths: default
-  - _self_
-
-hydra:
-  job:
-    chdir: false
-  run:
-    dir: ${paths.run_dir_root}/${now:%Y-%m-%d_%H-%M-%S}
+  - train

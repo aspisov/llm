@@ -3,6 +3,9 @@ max_steps: ${training.num_iterations}
 val_check_interval: ${training.val_frequency}
 limit_val_batches: 10
 devices: 1
+accelerator: ${hardware.accelerator}
+precision: ${hardware.precision}
 fast_dev_run: false
 gradient_clip_val: ${training.max_l2_norm}
 gradient_clip_algorithm: norm
+default_root_dir: ${paths.output_dir}
