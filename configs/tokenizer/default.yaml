@@ -1,0 +1,11 @@
+input_path: data/tinyshakespeare.txt
+vocab_size: 500
+special_tokens: ["<|endoftext|>"]
+vocab_path: outputs/tokenizers/tokenizer_vocab.json
+merges_path: outputs/tokenizers/tokenizer_merges.txt
+train_mode: dry_run
+eval_mode: load_only
+runner_train:
+  _target_: llm_scratch.tokenizer.runners.run_tokenizer_train
+runner_eval:
+  _target_: llm_scratch.tokenizer.runners.run_tokenizer_eval

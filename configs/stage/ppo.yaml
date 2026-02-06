@@ -1,0 +1,6 @@
+name: ppo
+backend: torch
+objective: policy_optimization
+required_config_groups: [data, module, optimizer, scheduler]
+runner:
+  _target_: llm_scratch.train.runners.stage_runners.run_torch_stage

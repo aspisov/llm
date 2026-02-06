@@ -1,0 +1,2 @@
+runner:
+  _target_: llm_scratch.eval.runners.lightning.evaluate_with_lightning

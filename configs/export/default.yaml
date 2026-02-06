@@ -1,0 +1,5 @@
+mode: metadata_only
+stage: pretrain
+output_dir: ${paths.output_dir}/export
+runner:
+  _target_: llm_scratch.export.runners.run_export

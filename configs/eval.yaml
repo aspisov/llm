@@ -11,9 +11,15 @@ defaults:
   - hardware: default
   - trainer: default
   - logger: default
+  - eval_runner: lightning
+  - eval_task: categorical_sanity
   - paths: default
   - hydra: default
 
 task_name: eval
 seed: null
 ckpt_path: ???
+
+eval:
+  max_examples: 128
+  prediction_mode: oracle

@@ -1,0 +1,6 @@
+name: pretrain
+backend: lightning
+objective: next_token_prediction
+required_config_groups: [data, module, optimizer, scheduler]
+runner:
+  _target_: llm_scratch.train.runners.stage_runners.run_lightning_stage

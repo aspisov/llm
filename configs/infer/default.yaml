@@ -1,0 +1,10 @@
+mode: dry_run
+prompt: "Hello"
+max_tokens: 64
+temperature: 1.0
+top_p: 1.0
+special_tokens: ["<|endoftext|>"]
+tokenizer_vocab_path: outputs/tokenizers/tinystories_bpe_vocab.json
+tokenizer_merges_path: outputs/tokenizers/tinystories_bpe_merges.txt
+runner:
+  _target_: llm_scratch.infer.runners.run_inference
