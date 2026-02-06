@@ -1,0 +1,21 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - data: pretrain
+  - model: transformer
+  - module: pretrain
+  - optimizer: adamw
+  - scheduler: cosine
+  - training: default
+  - hardware: default
+  - trainer: default
+  - callbacks: default
+  - logger: default
+  - checkpoints: default
+  - paths: default
+  - hydra: default
+
+task_name: train
+seed: null
+ckpt_path: ${checkpoints.initial_checkpoint}

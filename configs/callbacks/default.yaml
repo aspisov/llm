@@ -1,4 +1,5 @@
-- _target_: lightning.pytorch.callbacks.ModelCheckpoint
+model_checkpoint:
+  _target_: lightning.pytorch.callbacks.ModelCheckpoint
   dirpath: ${checkpoints.checkpoints_path}
   every_n_train_steps: ${checkpoints.checkpoint_frequency}
   save_last: true

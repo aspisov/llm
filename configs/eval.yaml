@@ -1,0 +1,19 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - data: pretrain
+  - model: transformer
+  - module: pretrain
+  - optimizer: adamw
+  - scheduler: cosine
+  - training: default
+  - hardware: default
+  - trainer: default
+  - logger: default
+  - paths: default
+  - hydra: default
+
+task_name: eval
+seed: null
+ckpt_path: ???
