@@ -20,7 +20,7 @@ def test_lightning_pretrain_step(tmp_path):
 
     model_cfg = OmegaConf.create(
         {
-            "_target_": "llm_scratch.train.factories.build_transformer",
+            "_target_": "llm_scratch.core.model.Transformer",
             "vocab_size": 512,
             "context_length": 8,
             "num_layers": 1,
@@ -28,8 +28,11 @@ def test_lightning_pretrain_step(tmp_path):
             "num_heads": 4,
             "d_ff": 32,
             "rope_theta": 10000,
-            "device": "cpu",
-            "dtype": "float32",
+            "device": {"_target_": "torch.device", "_args_": ["cpu"]},
+            "dtype": {
+                "_target_": "llm_scratch.train.hydra_types.to_torch_dtype",
+                "name": "float32",
+            },
         }
     )
     optimizer_cfg = OmegaConf.create(

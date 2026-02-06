@@ -7,7 +7,6 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from omegaconf import DictConfig
 
 from llm_scratch.experiments.log_run import log_run
-from llm_scratch.train.factories import resolve_dtype
 
 
 def _map_accelerator(device: str) -> str:
@@ -42,7 +41,7 @@ def main(cfg: DictConfig) -> None:
 
     log_run(cfg)
 
-    dtype = resolve_dtype(cfg.hardware.dtype)
+    dtype = next(model.parameters()).dtype
     accelerator = _map_accelerator(cfg.hardware.device)
     precision = _map_precision(dtype)
 
