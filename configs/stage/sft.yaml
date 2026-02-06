@@ -1,0 +1,6 @@
+name: sft
+backend: lightning
+objective: supervised_finetuning
+required_config_groups: [data, module, optimizer, scheduler]
+runner:
+  _target_: llm_scratch.train.runners.stage_runners.run_lightning_stage

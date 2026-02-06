@@ -1,0 +1,2 @@
+runner:
+  _target_: llm_scratch.eval.runners.task.evaluate_with_task_runner

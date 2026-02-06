@@ -1,0 +1,5 @@
+mode: dry_run
+host: 0.0.0.0
+port: 8000
+runner:
+  _target_: llm_scratch.serve.runners.run_serve

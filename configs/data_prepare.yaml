@@ -1,0 +1,10 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - data_prepare: default
+  - paths: default
+  - hydra: default
+
+task_name: data_prepare
+seed: null

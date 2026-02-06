@@ -1,0 +1,5 @@
+mode: validate_npz
+train_path: data/TinyStories-train.npz
+val_path: data/TinyStories-valid.npz
+runner:
+  _target_: llm_scratch.data.runners.run_data_prepare

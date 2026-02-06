@@ -1,0 +1,12 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - model: transformer
+  - hardware: default
+  - export: default
+  - paths: default
+  - hydra: default
+
+task_name: export
+seed: null

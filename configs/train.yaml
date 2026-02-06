@@ -2,6 +2,7 @@
 
 defaults:
   - _self_
+  - stage: pretrain
   - data: pretrain
   - model: transformer
   - module: pretrain
