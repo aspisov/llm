@@ -1,4 +1,4 @@
-from cs336_basics.tokenizer.bpe_trainer import train_and_save_bpe
+from llm_scratch.core.tokenizer_py.bpe_trainer import train_and_save_bpe
 
 if __name__ == "__main__":
     train_and_save_bpe(

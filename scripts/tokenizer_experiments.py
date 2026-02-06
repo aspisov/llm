@@ -1,6 +1,6 @@
 import time
 
-from cs336_basics.tokenizer.tokenizer import Tokenizer
+from llm_scratch.core.tokenizer_py.tokenizer import Tokenizer
 
 
 def load_docs(path: str, n: int, special_token: str) -> str:

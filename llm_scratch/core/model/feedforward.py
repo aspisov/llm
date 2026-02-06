@@ -3,7 +3,8 @@ import math
 import torch
 import torch.nn as nn
 
-from cs336_basics.model import Linear, silu
+from .activations import silu
+from .basic_layers import Linear
 
 
 class SwiGLU(nn.Module):

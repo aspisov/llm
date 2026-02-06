@@ -9,7 +9,7 @@ import torch
 from jaxtyping import Float, Int
 from torch import Tensor
 
-from cs336_basics.model import (
+from llm_scratch.core.model import (
     Embedding,
     Linear,
     MultiHeadSelfAttention,
@@ -23,10 +23,10 @@ from cs336_basics.model import (
     silu,
     softmax,
 )
-from cs336_basics.optimizers import AdamW, clip_gradients, learning_rate_schedule
-from cs336_basics.tokenizer.bpe_trainer import train_bpe
-from cs336_basics.tokenizer.tokenizer import Tokenizer
-from cs336_basics.utils import get_batch, load_checkpoint, save_checkpoint
+from llm_scratch.core.optimizers import AdamW, clip_gradients, learning_rate_schedule
+from llm_scratch.core.tokenizer_py.bpe_trainer import train_bpe
+from llm_scratch.core.tokenizer_py.tokenizer import Tokenizer
+from llm_scratch.utils import get_batch, load_checkpoint, save_checkpoint
 
 
 def run_linear(

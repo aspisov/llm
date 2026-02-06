@@ -1,6 +1,6 @@
 import torch
 
-from cs336_basics.model.activations import softmax
+from .activations import softmax
 
 
 def top_p_sampling(logits: torch.Tensor, p: float = 1, temperature: float = 1) -> torch.Tensor:

@@ -1,7 +1,7 @@
 import torch
 
-from cs336_basics.model import Transformer
-from cs336_basics.tokenizer import Tokenizer
+from llm_scratch.core.model import Transformer
+from llm_scratch.core.tokenizer_py import Tokenizer
 
 tokenizer = Tokenizer.from_files(
     "outputs/tokenizers/tinystories_bpe_vocab.json",
